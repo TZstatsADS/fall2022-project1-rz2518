@@ -1,0 +1,305 @@
+---
+title: "Project 1"
+author: "Ruiyu ZHANG"
+date: "9/20/2022"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Topic
+
+In this project, the topic is Exploratory Data Analysis of History of Philosophy
+
+Project title: Relationships of Philosophy Sentences and Other Factors.
+This Project is conducted by Ruiyu Zhang
+
+Project Summary: This report analyzed The History of Philosophy dataset for the purpose of finding potential relationships between philosophy sentence lengths and factors like publication date, author, and school. Along the way, interesting findings on the history of philosophy are also reported. And, at the end stage, relationships of philosophy sentences with different authors and their frequencies are represented by wordclouds plots to produce a clearer view of frequency of words in sentences.
+
+
+# Method
+
+I will follow the following steps:
+1. Import the data
+2. Clean the data
+3. Process the data
+4. Visualize the data
+5. Conclude the findings
+
+## 1. Import the data
+First of all, I imported the dataset downloaded from Kaggle. By importing and explore the first look of the data, I see that there are 11 total columns, with only three columns of double types and the rest are character types.
+```{r}
+data <- read.csv("~/Downloads/COLUMBIA UNIVERSITY/GR5243/philosophy_data.csv")
+#head(data,6)
+str(data)
+
+```
+```{r}
+library("tidyverse")
+library(devtools)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(ggpubr)
+library(wordcloud)
+library(RColorBrewer)
+library(wordcloud2)
+library(tm)
+```
+
+## 2. Clean the data
+Data is already pre-processed before downloading from Kaggle. The only data cleaning I need to do is to subset the data. Here, since my interest in this report is to explore relationships between philosophy sentence lengths and factors like publication date, author, and school.
+I subset the data to 6 columns of what I needed.
+```{r}
+data <- data[, -c(4:5,9:11)]
+head(data,6)
+colnames(data)
+```
+## 3. Process and mine the data
+In this section, I will first evaluate the means of sentence length grouped by schools and authors.
+```{r}
+data %>%
+  group_by(school,author) %>%
+  summarise_at(vars(sentence_length),
+               list(sentence_length_mean=mean))
+```
+From the above findings, I see that means of sentence lengths from each group of (school, author) are fairly around 100 to 200; in other words, there is no big difference among groups. It is worth to notice that (analytic, Wittgenstein) has the lowest mean of sentence length, which is only 84.884.
+
+Next, let's evaluate data grouped by school, author, and title.
+```{r}
+data %>%
+  group_by(school,author,title) %>%
+  summarise_at(vars(sentence_length),
+               list(sentence_length_mean=mean))
+```
+Now, when I dive in deeper of the dataset by grouping by school, author, and title, I see three groups with lower than 100 means: (analytic,Wittgenstein,On Certainty),(analytic,Wittgenstein,Philosophical Investigations),(nietzsche,Nietzsche, Thus Spake Zarathustra). 
+
+Since one of the goals is to examine the relationships between sentence length with other factors. Let's check the correlation coefficients:
+```{r}
+cor(data$sentence_length,data$original_publication_date)
+cor(data$sentence_length,data$corpus_edition_date)
+```
+By above correlation coefficient, we see that both sentence length and corpus edition date and sentence length and original publication date is actually weakly correlated. In other words, we can not find a strong positive or negative relationship between those two factors. 
+After examining the relationship between two numerical features. Let's process Kruskal-Wallis test to find if there is any relationship between categorical features, such as school, author, title with sentence length. The null hypothesis will be the medians of groups are equal, and the alternative hypothesis is that at least one of the group has different median. 
+```{r}
+kruskal.test(sentence_length ~ school, data = data)
+kruskal.test(sentence_length ~ author, data = data)
+kruskal.test(sentence_length ~ title, data = data)
+```
+As the p-values for all three kw rank sum test are less than the significance level 0.05, we reject the null and conclude that medians of sentence lengths are diffrent from group schoo, author, and title. 
+By now, we have examine both numerical and categorical relationship with sentence length. We find that there is no particular correlation between original publication date and sentence length and edition date to sentence length. 
+But, it is worth to mention that from KW test we found medians of sentence lengths are different among schools, authors, titles. 
+
+## 4. Visualize the data
+Let's take a closer look of the dataset with Categorical Features: 
+```{r}
+ggplot(data= data, aes(x= fct_infreq(title))) +
+  geom_bar(fill="blue")+
+  labs(x="Title")+
+  ggtitle("Number of Titles")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+#author
+ggplot(data= data, aes(x= fct_infreq(author))) +
+  geom_bar(fill="blue")+
+  labs(x="Author")+
+  ggtitle("Number of Authors")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+#school
+ggplot(data= data, aes(x= fct_infreq(school))) +
+  geom_bar(fill="blue")+
+  labs(x="School")+
+  ggtitle("Number of Schools")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+
+
+```
+From the above categorical data plots, I am able to visualize the counts of different title, author, and school in the data. As for title, we have the most entries from Aristotle-Complete Works, following by Plato-Complete Works on the second. As for author, we have the similar result, where Aristotle ranked the first and Plato the second. As for number of school, we have Analytic the most and Aristotle the second. 
+
+Next, let's take a closer look at the dataset with numerical features:
+```{r}
+#Original Publication Date
+ggplot(data = data, aes(x=original_publication_date)) + 
+  geom_histogram(fill="pink")+
+  ggtitle("Frequency of Publication Date")
+#edition Date
+ggplot(data = data, aes(x=corpus_edition_date)) + 
+  geom_histogram(fill="pink")+
+  ggtitle("Frequency of Edition Date")
+#Sentence Length
+ggplot(data = data, aes(x=sentence_length)) + 
+  geom_histogram(fill="pink")+
+  xlim(0,1000)+
+  ggtitle("Frequency of Sentence Length")
+
+#Sentence Length By School
+#ggplot(data = data, aes(x=school,y=sentence_length)) + 
+#  geom_histogram(aes(fill=school))+
+#  xlim(0,1000)+
+#  ggtitle("Frequency of Sentence Length By School")
+
+#Sentence Length By Title
+ggplot(data = data, aes(x=title, y=sentence_length)) + 
+  geom_violin(trim=F)+
+  ggtitle("Sentence Length By Title")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+
+#Sentence Length By Author
+ggplot(data = data, aes(x=author, y=sentence_length)) + 
+  geom_violin(trim=F)+
+  ggtitle("Sentence Length By Author")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+
+#Sentence Length By School
+ggplot(data = data, aes(x=school, y=sentence_length)) + 
+  geom_violin(trim=F)+
+  ggtitle("Sentence Length By School")+
+  theme(axis.text.x=element_text(size=6,angle=90))
+ 
+
+```
+From the above numerical data plots, I am able to visualize most of philosophy sentences were originally published from 1500 to 2000, edited from 1980 to 2020. I see a right-skewed histogram of sentences length, most of sentences length go from 0 - 250. 
+
+
+## 5. Word Clouds
+In this section, I will examine the most frequent words by word clouds and frequency barplot. Since the whole dataset is too large and unable to generate word clouds due to vector memory reasons. I will subset the data by the author from "Number of Authors" plot developed in part 4. They will be Plato, Hegel, and Foucault. 
+
+I skipped the Aristotle with most counts because it is unable to run because of vector memory reason due to subset too large.
+The following is Plato subset:
+```{r}
+#Plato
+#reload the data and clean the data 
+library(tm)
+data1 <- read.csv("~/Downloads/COLUMBIA UNIVERSITY/GR5243/philosophy_data.csv")
+data1 <- data1 %>%
+  filter(author == "Plato")
+
+text <- data1$sentence_lowered
+docs <- Corpus(VectorSource(text))
+#inspect(docs)
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+
+```
+
+Most frequent words for Plato are "one", "will", and "things". 
+
+The following is Hegel subset:
+```{r}
+#reload the data and clean the data 
+data2 <- read.csv("~/Downloads/COLUMBIA UNIVERSITY/GR5243/philosophy_data.csv")
+data2 <- data2 %>%
+  filter(author== "Hegel")
+
+text <- data2$sentence_lowered
+docs <- Corpus(VectorSource(text))
+#inspect(docs)
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+```
+
+Most frequent words for Plato are "one", "self", "sciousness". 
+
+The following is Foucault subset:
+```{r}
+#reload the data and clean the data 
+library(tm)
+data3 <- read.csv("~/Downloads/COLUMBIA UNIVERSITY/GR5243/philosophy_data.csv")
+data3 <- data3 %>%
+  filter(author == "Foucault")
+
+text <- data3$sentence_lowered
+docs <- Corpus(VectorSource(text))
+#inspect(docs)
+toSpace <- content_transformer(function (x , pattern ) gsub(pattern, " ", x))
+docs <- tm_map(docs, toSpace, "/")
+docs <- tm_map(docs, toSpace, "@")
+docs <- tm_map(docs, toSpace, "\\|")
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+# Remove numbers
+docs <- tm_map(docs, removeNumbers)
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+# Remove punctuations
+docs <- tm_map(docs, removePunctuation)
+# Eliminate extra white spaces
+docs <- tm_map(docs, stripWhitespace)
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words=200, random.order=FALSE, rot.per=0.35, 
+          colors=brewer.pal(8, "Dark2"))
+
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col ="lightblue", main ="Most frequent words",
+        ylab = "Word frequencies")
+
+```
+
+Most frequent words for Foucault are "madness", "one", "language". 
+
+## 6. Conclusion
+After all, there is no strong relationship found between sentence lengths of philosophy and original publication date, sentence length of philosophy and edition date. Though sentence length of philosophy are different with different means among authors, schools, and titles. 
+However, we found interesting facts that means of sentence lengths are fairly around 100-200; also, as shown by violin plots titled by "sentence length by author", "sentence length by title", and "sentence length by school", we can also visualize that sentence lengths are mostly in the range of 100 to 200.
+By the end, wordclouds were produced. I am able to see that different authors have different frequencies on using words: most frequent words for Plato are "one", "self", "sciousness"; most frequent words for Plato are "one", "will", and "things"; most frequent words for Foucault are "madness", "one", "language". 
