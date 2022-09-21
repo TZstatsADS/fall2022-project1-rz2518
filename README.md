@@ -9,7 +9,7 @@ This is the first and only *individual* (as opposed to *team*) project this seme
 
 Term: Fall 2022
 
-+ Projec title: How Are Philosophy Sentence Lengths Correlated to Factors and Changed Overtime
++ Projec title: How Are Philosophy Sentence Lengths Correlated to Different Factors and Changed Overtime
 + This project is conducted by Ruiyu Zhang
 
 + Project summary: This report analyzed The History of Philosophy dataset for the purpose of finding potential relationships between philosophy sentence lengths and factors like publication date, author, and school. Along the way, interesting findings on the history of philosophy are also reported. And, at the end stage, wordclounds by school will be developed to produce a clearer view of the sentences.
